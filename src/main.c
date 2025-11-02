@@ -18,8 +18,10 @@ int main(int argc, char *argv[])
     input[strcspn(input, "\n")] = '\0';
 
     // check user input
-    if (strstr(input, "exit"))
+    if (strcmp(input, "exit 0"))
 	    return 0;
+    if (strcmp(input, "exit 1"))
+	    return 1;
     printf("%s: command not found\n", input);
   }
 
