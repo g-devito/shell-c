@@ -1,16 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
   const int MAX_INPUT_SIZE = 100;
-  // Flush after every printf
-  setbuf(stdout, NULL);
+  while (1)
+  {
+    // Flush after every printf
+    setbuf(stdout, NULL);
 
-  printf("$ ");
+    printf("$ ");
 
-  // Wait for user input
-  char input[MAX_INPUT_SIZE];
-  fgets(input, MAX_INPUT_SIZE, stdin);
+    // Wait for user input
+    char input[MAX_INPUT_SIZE];
+    fgets(input, sizeof(input), stdin);
+    input[strcspn(input, "\n")] = '\0';
 
+    printf("%s: command not found\n", input);
+  }
   return 0;
 }
