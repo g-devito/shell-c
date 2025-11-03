@@ -19,12 +19,11 @@ int main(int argc, char *argv[])
     input[strcspn(input, "\n")] = '\0';
 
     // echo cmd
-    void* ptr = strstr(input, "echo");
-    if (ptr)
-	    printf("%p", ptr);
+    if (strncmp(input, "echo ", 5) == 0 || strcmp(input, "echo") == 0)
+	    printf("%s\n", input+5);
 
     // exit cmd
-    if (strncmp(input, "exit ", 5) == 0 || strcmp(input, "exit") == 0)
+    else if (strncmp(input, "exit ", 5) == 0 || strcmp(input, "exit") == 0)
     {
 	char *end_pointer;
 	int exit_number = (int) strtol(input+5, &end_pointer, 10); 
