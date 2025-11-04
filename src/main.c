@@ -7,6 +7,14 @@
 int main(int argc, char *argv[])
 {
   const int MAX_INPUT_SIZE = 100;
+  const char * const BUILT_IN_CMDS[] = 
+  {
+	  "echo",
+	  "type",
+	  "exit",
+	  NULL
+  };
+
   while (true)
   {
     // Flush after every printf
@@ -15,24 +23,50 @@ int main(int argc, char *argv[])
     printf("$ ");
 
     // Wait for user input
-    char input[MAX_INPUT_SIZE];
-    fgets(input, sizeof(input), stdin);
-    input[strcspn(input, "\n")] = '\0';
+    char in[MAX_INPUT_SIZE];
+    fgets(in, sizeof(in), stdin);
+    in[strcspn(in, "\n")] = '\0';
+    char *input = in;
+
+    while (*input == ' ' || *input == '\t')
+	    input++;
+
+    // type cmd
+    if (strncmp(input, "type", 4) == 0)
+    {
+	char *arg_start = input+4;
+
+	char *input_token = strtok(input+4, " \t");
+	while (input_token != NULL)
+	{
+		bool is_builtin = false;
+		for (int i = 0; BUILT_IN_CMDS[i] != NULL && !is_builtin; i++)
+		{
+			if (strcmp(BUILT_IN_CMDS[i], input_token) == 0)
+				is_builtin = true;
+		}
+		if (is_builtin)
+			printf("%s is a shell builtin\n", input_token);
+		else
+			printf("%s: not found\n", input_token);
+		input_token = strtok(NULL, " \t");
+	}
+    }
 
     // echo cmd
-    if (strncmp(input, "echo", 4) == 0)
+    else if (strncmp(input, "echo", 4) == 0)
     {
 	bool n_flag = false;
 	char *arg_start = input+4;
 
-	while (*arg_start == ' ')
+	while (*arg_start == ' ' || *arg_start == '\t')
 		arg_start++;
 
 	if (strncmp(arg_start, "-n", 2) == 0)
 	{
 		n_flag = true;
 		arg_start += 2;
-		while (*arg_start == ' ')
+		while (*arg_start == ' ' || *arg_start == '\t')
 			arg_start++;
 
 	}
@@ -51,7 +85,7 @@ int main(int argc, char *argv[])
 	char *arg_start = input+4;
 	char *end_pointer;
 
-	while (*arg_start == ' ')
+	while (*arg_start == ' ' || *arg_start == '\t')
 		arg_start++;
 	int exit_number = (int) strtol(arg_start, &end_pointer, 10); 
 
