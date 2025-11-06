@@ -5,6 +5,49 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+#define MAX_LEN 1024
+static const char *const BUILT_IN_CMDS[] = {"echo", "type", "exit", NULL};
+
+int tokenizer(char *input, char (*tokens)[MAX_LEN])
+{
+    int insideQuote = 0;
+    int tokenCounter = 0;
+    int charCounter = 0;
+
+    for (; *input; input++)
+    {
+        char c = *input;
+        if (insideQuote)
+        {
+            if (c == '\'' || c == '"')
+            {
+                insideQuote = 0;
+                tokens[tokenCounter++][charCounter] = '\0';
+                charCounter = 0;
+            }
+            else
+                tokens[tokenCounter][charCounter++] = c;
+        }
+        else
+        {
+            if (c == '\'' || c == '"')
+                insideQuote = 1;
+            else if (c == ' ')
+            {
+                if (charCounter)
+                {
+                    tokens[tokenCounter++][charCounter] = '\0';
+                    charCounter = 0;
+                }
+            }
+            else
+                tokens[tokenCounter][charCounter++] = c;
+        }
+    }
+
+    return tokenCounter + 1;
+}
+
 bool is_builtin(char *input, const char *const BUILT_IN_CMDS[])
 {
 
@@ -38,17 +81,41 @@ bool is_exec(char *input, char *path, char *full_path, size_t sizeof_full_path)
     return false;
 }
 
+void run_echo(int count, char (*tokens)[MAX_LEN])
+{
+    int start = (count > 1 && strcmp(tokens[1], "-n") == 0) ? 2 : 1;
+
+    for (int i = start; i < count; i++)
+    {
+        printf("%s", tokens[i]);
+        if (i < count - 1)
+            putchar(' ');
+    }
+
+    if (start == 1)
+        putchar('\n');
+}
+
+void run_type(int count, char (*tokens)[MAX_LEN])
+{
+    char full_path[1024];
+    char *path = getenv("PATH");
+
+    for (int i = 1; i < count; i++)
+    {
+        char *arg = tokens[i];
+
+        if (is_builtin(arg, BUILT_IN_CMDS))
+            printf("%s is a shell builtin\n", arg);
+        else if (is_exec(arg, path, full_path, MAX_LEN))
+            printf("%s is %s\n", arg, full_path);
+        else
+            printf("%s: not found\n", arg);
+    }
+}
+
 int main(int argc, char *argv[])
 {
-    char *path = getenv("PATH");
-    const int MAX_INPUT_SIZE = 100;
-    const char *const BUILT_IN_CMDS[] =
-        {
-            "echo",
-            "type",
-            "exit",
-            NULL};
-
     while (true)
     {
         // Flush after every printf
@@ -57,75 +124,28 @@ int main(int argc, char *argv[])
         printf("$ ");
 
         // Wait for user input
-        char in[MAX_INPUT_SIZE];
+        char in[MAX_LEN];
         fgets(in, sizeof(in), stdin);
         in[strcspn(in, "\n")] = '\0';
         char *input = in;
 
-        while (*input == ' ' || *input == '\t')
-            input++;
+        char tokens[MAX_LEN][MAX_LEN] = {0};
 
-        // type cmd
-        if (strncmp(input, "type", 4) == 0)
-        {
-            char full_path[1024];
-            char *input_token = strtok(input + 4, " \t");
+        int count = tokenizer(input, tokens);
 
-            while (input_token != NULL)
-            {
-                if (is_builtin(input_token, BUILT_IN_CMDS))
-                    printf("%s is a shell builtin\n", input_token);
-                else if (is_exec(input_token, path, full_path, sizeof(full_path)))
-                    printf("%s is %s\n", input_token, full_path);
-                else
-                    printf("%s: not found\n", input_token);
+        if (count == 0)
+            continue;
 
-                input_token = strtok(NULL, " \t");
-            }
-        }
+        char *cmd = tokens[0];
 
-        // echo cmd
-        else if (strncmp(input, "echo", 4) == 0)
-        {
-            bool n_flag = false;
-            char *arg_start = input + 4;
-
-            while (*arg_start == ' ' || *arg_start == '\t')
-                arg_start++;
-
-            if (strncmp(arg_start, "-n", 2) == 0)
-            {
-                n_flag = true;
-                arg_start += 2;
-                while (*arg_start == ' ' || *arg_start == '\t')
-                    arg_start++;
-            }
-            for (int i = 0; arg_start[i] != '\0'; i++)
-            {
-                if (arg_start[i] != '\"' && arg_start[i] != '\'')
-                    putchar(arg_start[i]);
-            }
-            if (!n_flag)
-                putchar('\n');
-        }
-
-        // exit cmd
-        else if (strncmp(input, "exit", 4) == 0)
-        {
-            char *end_pointer;
-            char *arg = input + 4;
-
-            while (*arg == ' ' || *arg == '\t')
-                arg++;
-            int exit_number = (int)strtol(arg, &end_pointer, 10);
-
-            if (end_pointer == arg || errno == ERANGE || *end_pointer != '\0' || exit_number < 0)
-                printf("exit: illegal number: %s\n", arg);
-            else
-                return exit_number;
-        }
+        if (strcmp(cmd, "type") == 0)
+            run_type(count, tokens);
+        else if (strcmp(cmd, "echo") == 0)
+            run_echo(count, tokens);
+        else if (strcmp(cmd, "exit") == 0)
+            return count == 1 ? 0 : atoi(tokens[1]);
         else
-            printf("%s: command not found\n", input);
+            printf("%s: command not found\n", cmd);
     }
 
     return 0;
